@@ -49,36 +49,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     console.log('[AuthProvider] useEffect alkaa')
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log('[AuthProvider] getSession tulos:', {
-        hasSession: !!session,
-        userId: session?.user?.id
-      })
-      if (session?.user) {
-        console.log('[AuthProvider] Haetaan profiili käyttäjälle:', session.user.id)
-        setUser(session.user)
-        const p = await fetchProfile(session.user.id)
-        setProfile(p)
-      }
-      console.log('[AuthProvider] Asetetaan loading=false')
-      setLoading(false)
-    })
+
+    let mounted = true
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('[AuthProvider] Auth state muuttui:', event)
-        if (event === 'SIGNED_IN' && session?.user) {
+
+        if (!mounted) return
+
+        if (session?.user) {
           setUser(session.user)
-          const p = await fetchProfile(session.user.id)
-          setProfile(p)
-        } else if (event === 'SIGNED_OUT') {
+          const profileData = await fetchProfile(session.user.id)
+          if (mounted) {
+            setProfile(profileData)
+            setLoading(false)
+          }
+        } else {
           setUser(null)
           setProfile(null)
+          setLoading(false)
         }
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function signIn(email: string, password: string) {

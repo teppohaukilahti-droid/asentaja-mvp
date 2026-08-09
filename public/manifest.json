@@ -1,0 +1,24 @@
+{
+  "name": "ProFloor – Mattoasentajan työkalu",
+  "short_name": "ProFloor",
+  "description": "Mattoasentajan työkalu: urakka- ja tuntikirjaukset, SuperLaskukone ja menekit",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#030712",
+  "lang": "fi",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "SuperLaskukone",
+      "short_name": "Laskin",
+      "description": "Avaa laskin suoraan",
+      "url": "/laskin",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import type { User, Session } from '@supabase/supabase-js'
+import { createContext, useContext, useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
+import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
 export type Profile = {
@@ -7,10 +8,10 @@ export type Profile = {
   organization_id: string
   full_name: string
   role: 'asentaja' | 'tyonjohtaja' | 'varasto' | 'johtaja'
-  profession_id: string
-  hourly_rate: number
-  hukka_percentage: number
-  pay_period_cutoff: number
+  profession_id: string | null
+  hourly_rate: number | null
+  hukka_percentage: number | null
+  pay_period_cutoff: number | null
 }
 
 type AuthContextType = {
@@ -23,61 +24,51 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-async function fetchProfile(userId: string): Promise<Profile | null> {
-  console.log('[fetchProfile] Aloitetaan haku, userId:', userId)
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single()
-
-  console.log('[fetchProfile] Tulos:', { data, error })
-
-  if (error) {
-    console.error('Failed to fetch profile:', error)
-    return null
-  }
-
-  return data
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  console.log('[AuthProvider] Komponentti renderöidään')
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // HUOM: onAuthStateChange-kuuntelijan sisällä EI saa await-kutsua supabasea
+  // (uudemmissa supabase-js-versioissa se lukkiutuu). Siksi profiili haetaan
+  // erillisessä effectissä käyttäjän vaihtuessa.
   useEffect(() => {
-    console.log('[AuthProvider] useEffect alkaa')
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null)
+      if (!data.session) setLoading(false)
+    })
 
-    let mounted = true
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('[AuthProvider] Auth state muuttui:', event)
-
-        if (!mounted) return
-
-        if (session?.user) {
-          setUser(session.user)
-          const profileData = await fetchProfile(session.user.id)
-          if (mounted) {
-            setProfile(profileData)
-            setLoading(false)
-          }
-        } else {
-          setUser(null)
-          setProfile(null)
-          setLoading(false)
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      if (!session) {
+        setProfile(null)
+        setLoading(false)
       }
-    )
+    })
 
-    return () => {
-      mounted = false
-      subscription.unsubscribe()
-    }
+    return () => subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    supabase.from('profiles').select('*').eq('id', user.id).single()
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error || !data) {
+          console.error('Profiilin haku epäonnistui:', error?.message)
+          setProfile(null)
+        } else {
+          setProfile({
+            ...data,
+            hourly_rate: data.hourly_rate === null ? null : Number(data.hourly_rate),
+            hukka_percentage: data.hukka_percentage === null ? null : Number(data.hukka_percentage),
+          })
+        }
+        setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [user])
 
   async function signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password })

@@ -3,6 +3,7 @@
 // VLOOKUP-kaavat hinnoittelevat rivit — kaavat ja muotoilut säilyvät.
 import { TILILAPPU_NIMIKKEET } from './tililappuMap'
 import { formatDate } from './helpers'
+import type { ValmisLappu } from './toimita'
 
 type TEntry = {
   entry_type: string
@@ -42,12 +43,22 @@ function setPlain(ws: any, addr: string, value: string | number | null) {
   if (!isFormulaCell(cell)) cell.value = value
 }
 
+export type DayVisit = { pvm: string; siteName: string }
+
+/** Kenen tililappu: nimi, henkilönumero ja tuntipalkka lapun yläosaan ja tuntiriveille. */
+export type LapunHenkilo = { nimi: string; henkilonumero?: string | null; tuntipalkka?: number | null }
+
+export type { ValmisLappu } from './toimita'
+export { toimitaLaput } from './toimita'
+
 export async function exportTililappuHeikkinen(
   entries: TEntry[],
-  workerName: string,
+  henkilo: LapunHenkilo,
   rangeStart: string | null,
   rangeEnd: string | null,
-): Promise<void> {
+  visits: DayVisit[] = [],
+): Promise<ValmisLappu> {
+  const workerName = henkilo.nimi
   const ExcelJS = await import('exceljs')
   const res = await fetch('/tililappu-pohja.xlsx')
   if (!res.ok) throw new Error('Pohjan lataus epäonnistui')
@@ -74,6 +85,14 @@ export async function exportTililappuHeikkinen(
     clearLiterals(ws, 27, 33, ['H'])
     setPlain(ws, 'J3', null); setPlain(ws, 'J4', null)
     setPlain(ws, 'J5', null); setPlain(ws, 'J6', null)
+    // Nimi ja henkilönumero: Taul1:ssä arvo, muut välilehdet viittaavat siihen kaavalla
+    setPlain(ws, 'J2', workerName)
+    setPlain(ws, 'N2', henkilo.henkilonumero ?? null)
+    // Tuntipalkka kuitattujen ja Heikkisen tuntien riveille (pohjassa on esimerkkiarvo 23)
+    if (henkilo.tuntipalkka && henkilo.tuntipalkka > 0) {
+      setPlain(ws, 'M32', henkilo.tuntipalkka)
+      setPlain(ws, 'M33', henkilo.tuntipalkka)
+    }
   }
 
   sites.forEach((site, idx) => {
@@ -131,31 +150,77 @@ export async function exportTililappuHeikkinen(
     if (omat > 0) setPlain(ws, 'H33', omat)
   })
 
-  // Tuntilappu
+  // Tuntilappu: jokaiselle päivälle KAIKKI työmaat joilla oltiin —
+  // kirjauksista (urakat + tunnit) ja GPS-käyntilokista. Kahdella työmaalla
+  // käyty päivä saa kaksi riviä.
   const tws = wb.getWorksheet('Tuntilappu')
   if (tws) {
     setPlain(tws, 'B4', workerName)
     setPlain(tws, 'E4', `${rangeStart ? formatDate(rangeStart) : ''} - ${rangeEnd ? formatDate(rangeEnd) : ''}`)
     clearLiterals(tws, 7, 45, ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'])
-    const tunnit = entries.filter((e) => e.entry_type === 'tunti').slice().sort((a, b) => a.entry_date.localeCompare(b.entry_date))
-    let r = 7
-    tunnit.forEach((e) => {
-      if (r > 45) return
-      setPlain(tws, `A${r}`, formatDate(e.entry_date))
-      setPlain(tws, `C${r}`, Number(e.hours ?? 0))
-      setPlain(tws, `D${r}`, e.worksites?.name ?? '')
-      if (e.hour_category === 'kuitattava') setPlain(tws, `F${r}`, Number(e.hours ?? 0))
-      else setPlain(tws, `G${r}`, Number(e.hours ?? 0))
-      r++
+
+    type DaySite = { kuitattavat: number; omat: number; vainKaynti: boolean }
+    const dayMap = new Map<string, Map<string, DaySite>>()
+    const touch = (pvm: string, site: string): DaySite => {
+      const day = dayMap.get(pvm) ?? new Map<string, DaySite>()
+      const g = day.get(site) ?? { kuitattavat: 0, omat: 0, vainKaynti: true }
+      day.set(site, g)
+      dayMap.set(pvm, day)
+      return g
+    }
+    entries.forEach((e) => {
+      const g = touch(e.entry_date, e.worksites?.name ?? 'Työmaa')
+      g.vainKaynti = false
+      if (e.entry_type === 'tunti') {
+        if (e.hour_category === 'kuitattava') g.kuitattavat += Number(e.hours ?? 0)
+        else g.omat += Number(e.hours ?? 0)
+      }
     })
+    visits.forEach((v) => {
+      if (rangeStart && v.pvm < rangeStart) return
+      if (rangeEnd && v.pvm > rangeEnd) return
+      touch(v.pvm, v.siteName)
+    })
+
+    let r = 7
+    const days = [...dayMap.keys()].sort()
+    for (const pvm of days) {
+      const sitesOfDay = dayMap.get(pvm)!
+      for (const [siteName, g] of sitesOfDay) {
+        if (r > 45) break
+        setPlain(tws, `A${r}`, formatDate(pvm))
+        setPlain(tws, `D${r}`, siteName)
+        const yht = g.kuitattavat + g.omat
+        if (yht > 0) setPlain(tws, `C${r}`, yht)
+        if (g.kuitattavat > 0) setPlain(tws, `F${r}`, g.kuitattavat)
+        if (g.omat > 0) setPlain(tws, `G${r}`, g.omat)
+        if (g.vainKaynti && yht === 0) setPlain(tws, `E${r}`, 'käynti (GPS)')
+        r++
+      }
+    }
   }
+
+  // Pohjaan on tallentunut esimerkkidatan LASKETUT tulokset. LibreOffice ei oletuksena
+  // laske xlsx-kaavoja uudelleen avatessa, joten vanha tulos (esim. "Urakka yht.")
+  // jäisi näkyviin. Poistetaan välimuistitulokset ja pyydetään täysi uudelleenlaskenta.
+  wb.eachSheet((sheet) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    sheet.eachRow({ includeEmpty: false }, (row: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      row.eachCell({ includeEmpty: false }, (cell: any) => {
+        const v = cell.value
+        if (v && typeof v === 'object' && ('formula' in v || 'sharedFormula' in v) && 'result' in v) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { result, ...ilmanTulosta } = v
+          cell.value = ilmanTulosta
+        }
+      })
+    })
+  })
+  wb.calcProperties = { ...(wb.calcProperties ?? {}), fullCalcOnLoad: true }
 
   const out = await wb.xlsx.writeBuffer()
   const blob = new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `Tililappu_${rangeStart ?? ''}_${rangeEnd ?? ''}.xlsx`
-  a.click()
-  URL.revokeObjectURL(url)
+  const etunimi = workerName.trim().split(' ')[0] || 'tililappu'
+  return { blob, tiedosto: `Tililappu_${etunimi}_${rangeStart ?? ''}_${rangeEnd ?? ''}.xlsx` }
 }

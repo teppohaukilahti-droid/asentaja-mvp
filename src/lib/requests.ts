@@ -9,12 +9,13 @@ export type MaterialRequest = {
   maara: string | null
   kiire: boolean
   lisatiedot: string | null
-  status: 'avoin' | 'hyvaksytty' | 'tilattu' | 'toimitettu' | 'hylatty'
+  status: 'avoin' | 'hyvaksytty' | 'tilattu' | 'saapunut' | 'toimitettu' | 'hylatty'
   forwarded_to: 'tyonjohtaja' | 'varasto' | 'toimittaja' | null
   handled_by: string | null
   approved_at: string | null
   ordered_at: string | null
   delivered_at: string | null
+  toimitus_pvm: string | null
   created_at: string
   worksites?: { name: string; address: string | null; client_company: string | null } | null
   requester?: { full_name: string } | null
@@ -24,6 +25,7 @@ export const STATUS_LABEL: Record<MaterialRequest['status'], string> = {
   avoin: 'Avoin',
   hyvaksytty: 'Hyväksytty',
   tilattu: 'Tilattu',
+  saapunut: 'Varastolla',
   toimitettu: 'Toimitettu',
   hylatty: 'Hylätty',
 }
@@ -32,6 +34,7 @@ export const STATUS_STYLE: Record<MaterialRequest['status'], string> = {
   avoin: 'bg-amber-500/15 text-amber-400',
   hyvaksytty: 'bg-blue-500/15 text-blue-300',
   tilattu: 'bg-purple-500/15 text-purple-300',
+  saapunut: 'bg-cyan-500/15 text-cyan-300',
   toimitettu: 'bg-green-500/15 text-green-400',
   hylatty: 'bg-gray-700 text-gray-400',
 }

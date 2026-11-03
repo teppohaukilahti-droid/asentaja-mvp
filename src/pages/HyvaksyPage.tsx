@@ -1,7 +1,7 @@
 // Mestarin julkinen hyväksyntäsivu: avautuu kertakäyttölinkillä ilman kirjautumista.
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Lock, Check, Download, ShieldCheck, HardHat } from 'lucide-react'
+import { Lock, Check, Download, ShieldCheck, HardHat, Star } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { formatDate } from '../lib/helpers'
 import { downloadMittausPdf, sha256 } from '../lib/mittausPdf'
@@ -39,6 +39,13 @@ export default function HyvaksyPage() {
   const [locking, setLocking] = useState(false)
   const [done, setDone] = useState<PdfPoytakirja | null>(null)
 
+  // Vapaaehtoinen palaute firmalle (ei näy asentajalle)
+  const [fbToken, setFbToken] = useState<string | null>(null)
+  const [fbStars, setFbStars] = useState(0)
+  const [fbMsg, setFbMsg] = useState('')
+  const [fbSending, setFbSending] = useState(false)
+  const [fbDone, setFbDone] = useState(false)
+
   const fetchData = useCallback(async () => {
     if (!token) { setError('Virheellinen linkki.'); setLoading(false); return }
     const { data, error } = await supabase.rpc('get_poytakirja_by_token', { p_token: token })
@@ -62,9 +69,13 @@ export default function HyvaksyPage() {
     })
     const hash = await sha256(hashInput)
     const meta = { userAgent: navigator.userAgent, lang: navigator.language, ts: new Date().toISOString() }
-    const { error } = await supabase.rpc('sign_poytakirja_by_token', {
+    const { data: signData, error } = await supabase.rpc('sign_poytakirja_by_token', {
       p_token: token, p_mestari: mestariNimi.trim(), p_signature: signature, p_hash: hash, p_meta: meta,
     })
+    if (!error && signData) {
+      const fb = (signData as { feedback_token?: string }).feedback_token
+      if (fb) setFbToken(fb)
+    }
     if (error) {
       setError('Hyväksyntä epäonnistui: linkki voi olla vanhentunut. Pyydä uusi QR-koodi.')
     } else {
@@ -79,6 +90,16 @@ export default function HyvaksyPage() {
     setLocking(false)
   }
 
+  async function sendFeedback() {
+    if (!fbToken || fbStars < 1 || fbSending) return
+    setFbSending(true)
+    const { data } = await supabase.rpc('give_mestari_palaute', {
+      p_feedback_token: fbToken, p_tahdet: fbStars, p_viesti: fbMsg.trim() || null,
+    })
+    if ((data as { ok?: boolean } | null)?.ok) setFbDone(true)
+    setFbSending(false)
+  }
+
   const inputCls = 'w-full px-3.5 py-3 text-base bg-gray-800 border border-gray-700 rounded-xl placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500'
 
   return (
@@ -89,7 +110,7 @@ export default function HyvaksyPage() {
         </div>
         <div>
           <h1 className="text-base font-bold">Mittauspöytäkirjan hyväksyntä</h1>
-          <p className="text-xs text-gray-500">Heikkinen Yhtiöt Oy · ProFloor</p>
+          <p className="text-xs text-gray-500">Heikkinen Yhtiöt Oy · FloorData</p>
         </div>
       </header>
 
@@ -115,6 +136,36 @@ export default function HyvaksyPage() {
             <p className="text-xs text-gray-500 text-center">
               Tallenna tämä kappale itsellesi — kuten paperilomakkeen alimmainen osa. Aitouden voi varmentaa milloin tahansa PDF:n QR-koodilla.
             </p>
+
+            {fbToken && !fbDone && (
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-3">
+                <p className="text-sm font-semibold">Miten toimitus sujui? <span className="text-gray-500 font-normal">(vapaaehtoinen, ~30 s)</span></p>
+                <div className="flex justify-center gap-2">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button key={n} onClick={() => setFbStars(n)} aria-label={`${n} tähteä`} className="p-1.5">
+                      <Star className={`w-9 h-9 ${n <= fbStars ? 'text-amber-400 fill-amber-400' : 'text-gray-700'}`} />
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  value={fbMsg}
+                  onChange={(e) => setFbMsg(e.target.value)}
+                  placeholder="Viesti Heikkiselle (vapaaehtoinen)"
+                  rows={3}
+                  className={inputCls}
+                />
+                <button onClick={sendFeedback} disabled={fbStars < 1 || fbSending}
+                  className="w-full py-3 bg-gray-800 border border-gray-700 rounded-xl text-sm font-semibold disabled:opacity-40">
+                  {fbSending ? 'Lähetetään…' : 'Lähetä palaute'}
+                </button>
+                <p className="text-[11px] text-gray-600">Palaute menee Heikkisen työnjohdolle.</p>
+              </div>
+            )}
+            {fbDone && (
+              <div className="bg-green-950/40 border border-green-900 rounded-2xl p-4 text-center">
+                <p className="text-sm text-green-400 font-semibold">Kiitos palautteesta!</p>
+              </div>
+            )}
           </div>
         )}
 

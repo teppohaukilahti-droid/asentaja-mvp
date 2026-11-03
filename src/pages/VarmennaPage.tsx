@@ -50,7 +50,7 @@ export default function VarmennaPage() {
         </div>
         <div>
           <h1 className="text-base font-bold">Mittauspöytäkirjan varmennus</h1>
-          <p className="text-xs text-gray-500">Heikkinen Yhtiöt Oy · ProFloor</p>
+          <p className="text-xs text-gray-500">Heikkinen Yhtiöt Oy · FloorData</p>
         </div>
       </header>
 

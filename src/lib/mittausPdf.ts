@@ -1,7 +1,5 @@
 // Mittauspöytäkirjan PDF: sisältää allekirjoituksen, eheystiivisteen ja
 // QR-koodin julkiseen varmennussivuun ("kolmas kappale" digitaalisesti).
-import jsPDF from 'jspdf'
-import QRCode from 'qrcode'
 import { formatDate } from './helpers'
 
 export type MRow = {
@@ -22,6 +20,8 @@ export type PdfPoytakirja = {
 }
 
 export async function downloadMittausPdf(p: PdfPoytakirja): Promise<void> {
+  // Raskaat kirjastot ladataan vasta kun PDF oikeasti tehdään — pienempi aloituspaketti
+  const [{ default: jsPDF }, { default: QRCode }] = await Promise.all([import('jspdf'), import('qrcode')])
   const doc = new jsPDF({ orientation: 'landscape' })
   const W = 297
   doc.setFontSize(18); doc.setTextColor(160, 20, 30)

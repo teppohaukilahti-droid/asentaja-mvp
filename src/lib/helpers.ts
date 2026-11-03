@@ -25,7 +25,12 @@ export const HOUR_TYPES = [
   'Odotus', 'Suojaus', 'Purku', 'Pohjatyöt', 'Mittaus', 'Muu',
 ]
 
-export const QUICK_HOURS = ['0,5', '1', '2', '4', '7,5', '8']
+export const QUICK_HOURS = ['0,5', '1', '2', '3', '4', '8']
+
+// Peukalokirjauksen tuntilajit: kuitattaviin kaikki paitsi mittaus,
+// omiin vain nämä viisi — molemmissa lisäksi "Muu" vapaalla tekstillä.
+export const KUITATTAVA_TYPES = HOUR_TYPES.filter((t) => t !== 'Mittaus' && t !== 'Muu')
+export const OMA_TYPES = ['Mittaus', 'Odotus', 'Tavaran haku', 'Perehdytys', 'Työmaanvaihto']
 
 // TES 110-sarja (hitsaus, esim. 110a, 110b2): paketissa lasketaan 50 % määrästä.
 // HUOM: pelkkä "110"-alku ei riitä, koska esim. 1104 on tekstiililaatta!

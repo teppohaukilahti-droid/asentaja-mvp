@@ -4,7 +4,6 @@ import {
   ArrowLeft, FileSignature, Plus, Trash2, RefreshCw, Lock, Download, X, Check, Import,
   QrCode, Smartphone, Copy as CopyIcon,
 } from 'lucide-react'
-import QRCode from 'qrcode'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { today, toInput, formatDate } from '../lib/helpers'
@@ -100,13 +99,26 @@ export default function MittausPage() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  function newDraft() {
+  async function newDraft() {
     const start = new Date(); start.setDate(start.getDate() - 21)
+    // Esitäytä työntekijät urakkaporukan nimillä (palkanjaon imuroinnit tältä työmaalta)
+    const names: string[] = [profile?.full_name ?? '']
+    if (worksiteId && user) {
+      const { data: shares } = await supabase
+        .from('pay_shares')
+        .select('pay_share_claims(user_name)')
+        .eq('worksite_id', worksiteId)
+        .eq('owner_id', user.id)
+      shares?.forEach((s) => {
+        const claims = s.pay_share_claims as unknown as { user_name: string | null }[] | null
+        claims?.forEach((c) => { if (c.user_name && !names.includes(c.user_name)) names.push(c.user_name) })
+      })
+    }
     setEditing({
       id: '', numero: 0, worksite_id: worksiteId ?? '',
       period_start: toInput(start), period_end: today(),
       tyokohde: site?.name ?? '', osoite: site?.address ?? '', laskutus: site?.client_company ?? '',
-      huom: '', tyontekijat: profile?.full_name ?? '',
+      huom: '', tyontekijat: names.filter(Boolean).join(', '),
       rows: [emptyRow()], status: 'luonnos',
       mestari_nimi: null, signature_png: null, signed_at: null, content_hash: null,
     })
@@ -114,13 +126,23 @@ export default function MittausPage() {
 
   async function importFromEntries() {
     if (!editing || !user || !worksiteId) return
+    // Varmista että luonnoksella on id, jotta kirjaukset voidaan kytkeä siihen
+    let draftId = editing.id
+    let draftNumero = editing.numero
+    if (!draftId) {
+      const saved = await saveDraft(true)
+      if (!saved?.id) return
+      draftId = saved.id
+      draftNumero = saved.numero
+    }
     let q = supabase.from('entries')
-      .select('entry_type, amount, hours, description, tes_codes(code, description, unit)')
+      .select('id, entry_type, amount, hours, description, mittapoytakirja_id, tes_codes(code, description, unit)')
       .eq('worksite_id', worksiteId).eq('user_id', user.id)
+      .or(`mittapoytakirja_id.is.null,mittapoytakirja_id.eq.${draftId}`)
     if (editing.period_start) q = q.gte('entry_date', editing.period_start)
     if (editing.period_end) q = q.lte('entry_date', editing.period_end)
     const { data } = await q
-    if (!data || data.length === 0) { setToast('Ei kirjauksia valitulla aikavälillä'); return }
+    if (!data || data.length === 0) { setToast('Ei vapaita kirjauksia valitulla aikavälillä'); return }
     const grouped = new Map<string, { tuote: string; sum: number; unit: string }>()
     data.forEach((e) => {
       const tes = e.tes_codes as unknown as { code: string; description: string; unit: string } | null
@@ -142,8 +164,16 @@ export default function MittausPage() {
       tuote: g.tuote,
       mitat: `${String(Math.round(g.sum * 100) / 100).replace('.', ',')} ${g.unit}`,
     }))
-    setEditing({ ...editing, rows })
-    setToast(`${rows.length} riviä haettu kirjauksista`)
+    // Kytke tuodut kirjaukset tähän pöytäkirjaan (vanhat linkit ensin irti)
+    await supabase.from('entries').update({ mittapoytakirja_id: null }).eq('mittapoytakirja_id', draftId)
+    const entryIds = data.map((e) => e.id)
+    const { error: linkError } = await supabase.from('entries').update({ mittapoytakirja_id: draftId }).in('id', entryIds)
+    setEditing({ ...editing, id: draftId, numero: draftNumero, rows })
+    if (linkError) {
+      setToast(`${rows.length} riviä haettu — kirjausten kytkentä epäonnistui`)
+    } else {
+      setToast(`${rows.length} riviä haettu, ${entryIds.length} kirjausta kytketty pöytäkirjaan`)
+    }
   }
 
   async function saveDraft(keepOpen?: boolean): Promise<Poytakirja | null> {
@@ -201,6 +231,7 @@ export default function MittausPage() {
     if (error) { setToast('QR-koodin luonti epäonnistui'); return }
     const link = `${window.location.origin}/hyvaksy?token=${token}`
     setQrLink(link)
+    const { default: QRCode } = await import('qrcode') // ladataan vasta tarvittaessa
     setQrDataUrl(await QRCode.toDataURL(link, { margin: 1, width: 480 }))
     setSignMode('qr')
     // Odota mestarin hyväksyntää
@@ -303,12 +334,12 @@ export default function MittausPage() {
                       <span className="flex items-center gap-1 text-xs font-semibold text-green-400 bg-green-500/10 px-2.5 py-1 rounded-full">
                         <Lock className="w-3 h-3" /> Lukittu
                       </span>
-                      <button onClick={() => downloadMittausPdf(p)} aria-label="Lataa PDF" className="p-2 text-gray-400 hover:text-white"><Download className="w-4 h-4" /></button>
+                      <button onClick={() => downloadMittausPdf(p)} aria-label="Lataa PDF" className="p-3 text-gray-400 hover:text-white"><Download className="w-4 h-4" /></button>
                     </>
                   ) : (
                     <>
                       <span className="text-xs font-semibold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full">Luonnos</span>
-                      <button onClick={() => deleteDraft(p.id)} aria-label="Poista" className="p-2 text-gray-600 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => deleteDraft(p.id)} aria-label="Poista" className="p-3 text-gray-600 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
                     </>
                   )}
                 </div>
@@ -385,7 +416,7 @@ export default function MittausPage() {
               <div key={i} className="bg-gray-900 border border-gray-800 rounded-2xl p-3.5 space-y-2.5">
                 <div className="flex items-center gap-2">
                   <input type="text" placeholder="Tuote / työ" value={r.tuote} onChange={(e) => updateRow(i, { tuote: e.target.value })} className={inputCls} />
-                  <button onClick={() => setEditing({ ...editing, rows: editing.rows.filter((_, j) => j !== i) })} aria-label="Poista rivi" className="p-2 text-gray-600 hover:text-red-400 shrink-0"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => setEditing({ ...editing, rows: editing.rows.filter((_, j) => j !== i) })} aria-label="Poista rivi" className="p-3 text-gray-600 hover:text-red-400 shrink-0"><Trash2 className="w-4 h-4" /></button>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="flex gap-1">
@@ -431,7 +462,7 @@ export default function MittausPage() {
           <div className="w-full max-w-md mx-auto bg-gray-900 border-t border-gray-700 rounded-t-3xl p-5 pb-8 space-y-3" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-semibold flex items-center gap-2"><Lock className="w-4 h-4 text-amber-400" /> Mestarin hyväksyntä</h3>
-              <button onClick={() => setSignMode(null)} className="p-2 text-gray-500"><X className="w-5 h-5" /></button>
+              <button onClick={() => setSignMode(null)} className="p-3 text-gray-500"><X className="w-5 h-5" /></button>
             </div>
             <button onClick={startQrApproval} className="w-full flex items-center gap-3 p-4 bg-amber-500 text-gray-950 rounded-2xl text-left">
               <QrCode className="w-8 h-8 shrink-0" />
@@ -468,7 +499,23 @@ export default function MittausPage() {
               className="w-full flex items-center justify-center gap-2 py-2.5 bg-gray-800 rounded-xl text-sm text-gray-300">
               <CopyIcon className="w-4 h-4" /> Kopioi linkki (esim. tekstiviestiin)
             </button>
-            <p className="text-[11px] text-gray-600">Linkki on kertakäyttöinen ja voimassa 24 tuntia.</p>
+            <button onClick={async () => {
+              if (!editing?.id || !profile) return
+              // Pidennä linkin voimassaolo viikoksi ja siirrä työnjohdon hoidettavaksi
+              await supabase.from('mittapoytakirjat').update({
+                eskaloitu: true, eskaloitu_at: new Date().toISOString(),
+                eskaloija: profile.full_name ?? '',
+                token_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              }).eq('id', editing.id)
+              if (pollRef.current) clearInterval(pollRef.current)
+              setSignMode(null); setQrDataUrl(null); setEditing(null)
+              setToast('Siirretty työnjohdolle — he toimittavat linkin mestarille')
+              fetchAll()
+            }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-gray-800 border border-amber-500/40 rounded-xl text-sm font-semibold text-amber-300">
+              Mestari ei ollut paikalla — siirrä työnjohdolle
+            </button>
+            <p className="text-[11px] text-gray-600">Linkki on kertakäyttöinen ja voimassa 24 tuntia. Siirrossa työnjohdolle voimassaolo pitenee viikkoon.</p>
           </div>
         </div>
       )}
@@ -479,7 +526,7 @@ export default function MittausPage() {
           <div className="w-full max-w-md mx-auto bg-gray-900 border-t border-gray-700 rounded-t-3xl p-5 pb-8 space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-semibold flex items-center gap-2"><Lock className="w-4 h-4 text-amber-400" /> Allekirjoitus tällä laitteella</h3>
-              <button onClick={() => setSignMode(null)} className="p-2 text-gray-500"><X className="w-5 h-5" /></button>
+              <button onClick={() => setSignMode(null)} className="p-3 text-gray-500"><X className="w-5 h-5" /></button>
             </div>
             <p className="text-xs text-amber-300/90 bg-amber-500/10 border border-amber-900 rounded-xl p-3">
               Allekirjoituksen jälkeen pöytäkirja <strong>lukitaan pysyvästi</strong>. Pöytäkirjaan merkitään, että allekirjoitus tehtiin työntekijän laitteella.

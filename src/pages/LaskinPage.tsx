@@ -142,7 +142,7 @@ export default function LaskinPage() {
       setAcc(result)
       setAccDirect(false)
       setHistLine(`${note ?? fmt(result)} ${opSymbol(op)}`)
-      setEntry(fmt(result).replace(/ /g, ''))
+      setEntry(fmt(result).replace(/\u00a0/g, ''))
     }
     setPendingOp(op)
     setEntryIsResult(true)
@@ -261,7 +261,7 @@ export default function LaskinPage() {
   }, [menekkiM2, liimaGm2, liimaPakkaus, tasoiteKgM2mm, tasoiteMm, tasoiteSakki, useHukka, hukkaPct])
 
   // ---- UI ----
-  const keypadBtn = 'h-16 rounded-2xl text-xl font-semibold active:scale-95 transition-all select-none'
+  const keypadBtn = 'h-16 rounded-xl text-xl font-semibold active:scale-95 transition-all select-none'
   const numBtn = `${keypadBtn} bg-gray-800 text-white hover:bg-gray-700`
   const opBtn = `${keypadBtn} bg-gray-700 text-amber-400 hover:bg-gray-600`
   const memBtn = 'h-12 rounded-xl text-sm font-semibold bg-gray-800/80 text-gray-300 hover:bg-gray-700 active:scale-95 transition-all'
@@ -273,7 +273,7 @@ export default function LaskinPage() {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h1 className="text-base font-semibold flex items-center gap-2">
-          <CalcIcon className="w-4 h-4 text-amber-500" /> SuperLaskukone
+          <CalcIcon className="w-4 h-4 text-amber-500" /> Laskin+
         </h1>
         <button
           onClick={() => setSitePickerOpen(true)}
@@ -305,7 +305,7 @@ export default function LaskinPage() {
                 </span>
               )}
               {memTotal > 0 && (
-                <button onClick={() => setMemOpen(true)} className="text-xs font-semibold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">
+                <button onClick={() => setMemOpen(true)} className="text-xs font-semibold text-gray-300 bg-gray-800 px-2 py-0.5 rounded-full">
                   M: {fmt(memTotal)} m²
                 </button>
               )}
@@ -318,14 +318,14 @@ export default function LaskinPage() {
               <button
                 key={n}
                 onClick={() => { setNosto(n); setAskOmaNosto(false) }}
-                className={`flex-1 h-11 rounded-xl text-sm font-semibold transition-colors ${nosto === n && !askOmaNosto ? 'bg-amber-500 text-gray-950' : 'bg-gray-800 text-gray-300'}`}
+                className={`flex-1 h-11 rounded-xl text-sm font-semibold transition-colors ${nosto === n && !askOmaNosto ? 'bg-gray-100 text-gray-950' : 'bg-gray-800 text-gray-300'}`}
               >
                 {n === 0 ? 'Ei nostoa' : `${n} cm`}
               </button>
             ))}
             <button
               onClick={() => { setAskOmaNosto(true); setOmaNosto('') }}
-              className={`flex-1 h-11 rounded-xl text-sm font-semibold transition-colors ${askOmaNosto || ![0, 10, 15].includes(nosto) ? 'bg-amber-500 text-gray-950' : 'bg-gray-800 text-gray-300'}`}
+              className={`flex-1 h-11 rounded-xl text-sm font-semibold transition-colors ${askOmaNosto || ![0, 10, 15].includes(nosto) ? 'bg-gray-100 text-gray-950' : 'bg-gray-800 text-gray-300'}`}
             >
               {![0, 10, 15].includes(nosto) && !askOmaNosto ? `${String(nosto).replace('.', ',')} cm` : 'Oma'}
             </button>
@@ -359,7 +359,7 @@ export default function LaskinPage() {
             <button className={memBtn} onClick={() => { if (memRows.length > 0 && confirm('Tyhjennetäänkö muisti?')) setMemory({}) }}>MC</button>
             <button className={memBtn} onClick={() => setMemOpen(true)}>MR</button>
             <button className={memBtn} onClick={() => pressMemAdd(-1)}>M−</button>
-            <button className={`${memBtn} !bg-green-600/20 !text-green-400`} onClick={() => pressMemAdd(1)}>M+</button>
+            <button className={memBtn} onClick={() => pressMemAdd(1)}>M+</button>
           </div>
 
           {/* Keypad */}
@@ -403,7 +403,7 @@ export default function LaskinPage() {
             Lisää hukka {String(hukkaPct).replace('.', ',')} % (profiilistasi)
           </label>
 
-          <section className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-3">
+          <section className="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-3">
             <h3 className="font-semibold text-sm">Liima</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -417,7 +417,7 @@ export default function LaskinPage() {
             </div>
           </section>
 
-          <section className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-3">
+          <section className="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-3">
             <h3 className="font-semibold text-sm">Tasoite</h3>
             <div className="grid grid-cols-3 gap-3">
               <div>
@@ -436,7 +436,7 @@ export default function LaskinPage() {
           </section>
 
           {menekki && (
-            <section className="bg-amber-500/10 border border-amber-800 rounded-2xl p-4 space-y-2">
+            <section className="bg-amber-500/10 border border-amber-800 rounded-xl p-4 space-y-2">
               <p className="text-sm text-amber-300 font-semibold">Laskettu pinta-ala: {fmt(menekki.m2)} m²{useHukka ? ' (sis. hukka)' : ''}</p>
               <p className="text-base">Liima: <span className="font-bold">{fmt(Math.round(menekki.liimaKg * 10) / 10)} kg</span> → {menekki.liimaPak} pakkausta</p>
               <p className="text-base">Tasoite: <span className="font-bold">{fmt(Math.round(menekki.tasoiteKg * 10) / 10)} kg</span> → {menekki.sakit} säkkiä</p>
@@ -477,7 +477,7 @@ export default function LaskinPage() {
           <div className="w-full max-w-md mx-auto bg-gray-900 border-t border-gray-700 rounded-t-3xl p-5 pb-8" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold">Muisti {worksite ? `· ${worksite.name}` : ''}</h3>
-              <button onClick={() => setMemOpen(false)} className="p-2 text-gray-500"><X className="w-5 h-5" /></button>
+              <button onClick={() => setMemOpen(false)} className="p-3 text-gray-500"><X className="w-5 h-5" /></button>
             </div>
             {memRows.length === 0 ? (
               <p className="text-gray-500 text-sm">Muisti on tyhjä. Laske ja paina M+.</p>
@@ -519,7 +519,7 @@ export default function LaskinPage() {
             <h3 className="font-semibold mb-4">Valitse työmaa</h3>
             <div className="space-y-2">
               {worksites.map((w) => (
-                <button key={w.id} onClick={() => { setWorksite(w); setSitePickerOpen(false) }} className={`w-full py-3.5 rounded-xl font-medium ${worksite?.id === w.id ? 'bg-amber-500 text-gray-950' : 'bg-gray-800 hover:bg-gray-700'}`}>
+                <button key={w.id} onClick={() => { setWorksite(w); setSitePickerOpen(false) }} className={`w-full py-3.5 rounded-xl font-medium ${worksite?.id === w.id ? 'bg-gray-100 text-gray-950' : 'bg-gray-800 hover:bg-gray-700'}`}>
                   {w.name}
                 </button>
               ))}
@@ -540,7 +540,7 @@ export default function LaskinPage() {
 
       {exportDone && (
         <div className="fixed inset-0 z-40 bg-black/70 flex items-center justify-center px-6" onClick={() => setExportDone(null)}>
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 text-center max-w-sm" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 text-center max-w-sm" onClick={(e) => e.stopPropagation()}>
             <Check className="w-10 h-10 text-green-400 mx-auto mb-3" />
             <p className="font-semibold mb-1">Vienti onnistui</p>
             <p className="text-sm text-gray-400 mb-4">{exportDone}</p>

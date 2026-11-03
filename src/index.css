@@ -1,1 +1,41 @@
 @import "tailwindcss";
+
+/* FloorData — hillitty ammattilaistyyli.
+   Järjestelmäfontti: sama jota pankit ja viranomaissovellukset käyttävät.
+   Ei koristefontteja, ei liukuvärejä — työkalu, ei esittelysivu. */
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Numerot tasalevyisinä kaikkialla missä on summia ja määriä */
+body {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rauhallinen, yhtenäinen fokustyyli näppäimistökäyttöön */
+:focus-visible {
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+/* Painalluksen tuntu ilman animaatiokikkailua */
+button {
+  touch-action: manipulation;
+}
+
+/* Ohut, huomaamaton vierityspalkki */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

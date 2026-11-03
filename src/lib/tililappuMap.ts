@@ -1,4 +1,5 @@
-// Heikkisen tililappupohjan (1.6.2026) nimikkeet TES-koodeittain.
+// Heikkisen tililappupohjan (TES 1.6.2026) nimikkeet TES-koodeittain.
+// Päivitetty 11/2026: lisätty 112, 7d, 8a, 915b, 11b, 11b2 (uudet nimikkeet tietokannassa).
 // VLOOKUP pohjassa hinnoittelee rivit nimikkeen perusteella — tekstin on vastattava täsmälleen.
 // Koodit joita ei löydy kartasta viedään pohjan vapaisiin sarakkeisiin omalla hinnalla.
 export const TILILAPPU_NIMIKKEET: Record<string, string> = {
@@ -25,6 +26,7 @@ export const TILILAPPU_NIMIKKEET: Record<string, string> = {
   '110g': '110g. hitsaus kalvopääl.matot yli 200 jm',
   '110g2': '110g. hitsaus kalvopääl.matot alle 200 jm',
   '111': '111. valmiin lattian suojaus paperi/kalvo reunat teipaten',
+  '112': '112. keittiön tms.allaskaappien matotus 3 sivua ylösnostolla',
   '201': '201. tasoitus kerran yli yli 200 m²',
   '201a': '201. tasoitus kerran yli, alle 200 ²',
   '201b': '201b. tasoitus kerran yli väh 3mm, yli 200m²',
@@ -62,7 +64,7 @@ export const TILILAPPU_NIMIKKEET: Record<string, string> = {
   '404': '404. kumimatot enint.4 mm yli 200 m²',
   '404a': '404. kumimatot enint.4 mm alle 200 m²',
   '404b': '404. kumimatot enint.4 mm pientalot yli 200m',
-  '4a': '4.a. jyräys jos vaaditaan ohjeissa',
+  '4a': '4.a. jyräys jos vaaditaan ohjeissa ', // HUOM: pohjassa välilyönti lopussa — VLOOKUP vaatii täsmälleen saman
   '501': '501. liimattuna yli 200 m²',
   '501a': '501. liimattuna alle 200 m²',
   '501b': '501. liimattuna pientalot yli 200 m²',
@@ -89,12 +91,14 @@ export const TILILAPPU_NIMIKKEET: Record<string, string> = {
   '606b': '606. kumilaatat yli 5-15mm pientalot yli 200m²',
   '701': '701. muovimatto kostea',
   '701a': '701a. kiviainesmatto kostea',
+  '7d': '7.d. maton reunan ujuttaminen panel. seinän alle',
   '702': '702. muovimatto iv-koneh / labrat',
   '702a': '702a. kiviainesmatto iv-koneh / labrat',
   '801': '801. laminoidut ja yksiaineiset nestesaumauksella',
   '802': '802. laminoidut ja yksiaineiset nauhahitsauksella',
   '805': '805. seinän erillinen alusliimaus',
   '806': '806. käytävien muovi/kumi törmäyss.maton kiinnittäminen',
+  '8a': '8.a. 801 ja 802 kannatinrautojen ymp. leikkaus',
   '901': '901. portaan tasoitus',
   '902': '902. kumi tai muovilaatan kiinnitys',
   '903': '903. muovi-, kumi- tai linomaton kiinnitys',
@@ -110,6 +114,7 @@ export const TILILAPPU_NIMIKKEET: Record<string, string> = {
   '913': '913. tehdasvalm. yhdistetty askelpäällys ja kulmalista',
   '914': '914. tehdasvalm. askelrinta',
   '915': '915. askelten jalkalista, tehdasvalm. kumi tai muovi',
+  '915b': '915. askelten jalkalista työpaikalla leikattuna',
   '916': '916. askelten jalkalistan jiirin leikkauksesta',
   '917': '917. askeleen päässä oleva vesilista',
   '918': '918. putkista, tukiraudoista ja kaidekiinnikkeistä',
@@ -137,4 +142,6 @@ export const TILILAPPU_NIMIKKEET: Record<string, string> = {
   '1104': '1104. tekstiililaatta 50 × 50 ja suurem.kiinn.liimaamalla',
   '1104a': '1104a.tekstiililaatta 50 x 50 ja suurem.kiinn.kulmateipillä',
   '1104b': '1104b . tekstiililaatta hallit.ja yht.lattioissa yli 200m²',
+  '11b': '11.b. sauman leikkaus, jos molemm. reunat leikattava',
+  '11b2': '11.b. sovitus, kun ei teippausta',
 }

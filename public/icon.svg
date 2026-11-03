@@ -1,11 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect x="24" y="24" width="464" height="464" rx="92" fill="#f59e0b"/>
-  <rect x="148" y="118" width="216" height="276" rx="24" fill="#030712"/>
-  <rect x="172" y="142" width="168" height="76" rx="10" fill="#f59e0b"/>
-  <circle cx="196" cy="266" r="22" fill="#f59e0b"/>
-  <circle cx="256" cy="266" r="22" fill="#f59e0b"/>
-  <circle cx="316" cy="266" r="22" fill="#f59e0b"/>
-  <circle cx="196" cy="330" r="22" fill="#f59e0b"/>
-  <circle cx="256" cy="330" r="22" fill="#f59e0b"/>
-  <circle cx="316" cy="330" r="22" fill="#f59e0b"/>
+  <g fill="none" stroke="#030712" stroke-linecap="round">
+    <!-- sääri lattialla -->
+    <path d="M 72 366 L 148 366" stroke-width="36"/>
+    <!-- reisi -->
+    <path d="M 148 366 L 174 274" stroke-width="42"/>
+    <!-- vartalo -->
+    <path d="M 174 274 L 302 252" stroke-width="62"/>
+    <!-- käsivarsi -->
+    <path d="M 302 258 L 334 360" stroke-width="34"/>
+  </g>
+  <!-- pää -->
+  <circle cx="372" cy="234" r="42" fill="#030712"/>
+  <!-- matto joka aukeaa rullalta edessä -->
+  <rect x="52" y="392" width="326" height="26" rx="13" fill="#030712"/>
+  <path d="M 396 405 C 436 405 460 383 460 354 C 460 330 442 315 421 315 C 404 315 393 327 393 342 C 393 353 401 361 412 361"
+        fill="none" stroke="#030712" stroke-width="24" stroke-linecap="round"/>
 </svg>

@@ -18,5 +18,13 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // React Compiler -esiasetuksen säännöt pois: emme käytä React Compileria,
+      // ja "hae data kun sivu avautuu" -malli (fetch + setState effectissä) on
+      // tämän sovelluksen tietoinen arkkitehtuuri. Muut säännöt pidetään täysillä.
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
+      'react-hooks/purity': 'off',
+    },
   },
 ])
